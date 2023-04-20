@@ -1,0 +1,28 @@
+image: node:10.15.0
+
+pipelines:
+  branches:
+    dev:
+      - step:
+          name: Build
+          services:
+            - docker
+          script:
+            - apt -y update && npm i -g yarn
+            - yarn -v
+            - yarn install --ignore-engines
+            - IMAGE="${DO_IMAGE}"
+            - TAG=${BITBUCKET_BRANCH:-$BITBUCKET_TAG}
+            - USER="${DOCKER_USER}"
+            - PASS="${DOCKER_PASS}"
+            - docker info
+            - docker --version
+            - docker build -t ${IMAGE}:${TAG} .
+            - docker login -u ${USER} -p ${PASS}
+            - docker push ${IMAGE}:${TAG}
+            - ssh -tt ${SSH} << EOF
+            - docker pull ${IMAGE}:${TAG}
+            - docker-compose -f /home/devgrey/newufa-sms-gateway/docker-compose.dev.yml stop
+            - docker-compose -f /home/devgrey/newufa-sms-gateway/docker-compose.dev.yml up -d
+            - exit 0
+            - EOF
